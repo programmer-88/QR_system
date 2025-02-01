@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, session
 import sqlite3
 from datetime import datetime
 
 app = Flask(__name__)
+app.secret_key = 'your_secret_key'  # Required for session management
 
 # Database setup
 DATABASE = 'qr_records.db'
@@ -14,6 +15,8 @@ def init_db():
                  (code TEXT PRIMARY KEY, upi_info TEXT, data TEXT, creation_date TEXT)''')
     c.execute('''CREATE TABLE IF NOT EXISTS archived_records
                  (code TEXT PRIMARY KEY, upi_info TEXT, data TEXT, creation_date TEXT, deletion_date TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS users
+                 (username TEXT PRIMARY KEY, password TEXT)''')
     conn.commit()
     conn.close()
 
@@ -21,11 +24,69 @@ def init_db():
 init_db()
 
 @app.route('/')
-def index():
+def home():
+    return redirect('/login')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        # Check if username and password match
+        conn = sqlite3.connect(DATABASE)
+        c = conn.cursor()
+        c.execute("SELECT password FROM users WHERE username=?", (username,))
+        user = c.fetchone()
+        conn.close()
+
+        if user and user[0] == password:  # Compare plaintext passwords (not secure)
+            session['username'] = username  # Store username in session
+            return redirect('/dashboard')  # Redirect to dashboard after login
+        else:
+            return "Invalid username or password", 401
+
+    return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        # Check if the username already exists
+        conn = sqlite3.connect(DATABASE)
+        c = conn.cursor()
+        c.execute("SELECT username FROM users WHERE username=?", (username,))
+        if c.fetchone():
+            conn.close()
+            return "Username already exists. Please choose a different username.", 400
+
+        # Insert the new user into the database
+        c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+        conn.commit()
+        conn.close()
+
+        return redirect('/login')
+
+    return render_template('register.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('username', None)
+    return redirect('/login')
+
+@app.route('/dashboard')
+def dashboard():
+    if 'username' not in session:
+        return redirect('/login')
     return render_template('index.html')
 
 @app.route('/generate', methods=['GET', 'POST'])
 def generate():
+    if 'username' not in session:
+        return redirect('/login')
+
     if request.method == 'POST':
         upi_info = request.form['upi_info']
         
@@ -52,6 +113,9 @@ def generate():
 
 @app.route('/verify', methods=['GET', 'POST'])
 def verify():
+    if 'username' not in session:
+        return redirect('/login')
+
     if request.method == 'POST':
         # Handle POST request (scanned data from frontend)
         scanned_data = request.json.get('data')
@@ -73,6 +137,9 @@ def verify():
 
 @app.route('/delete', methods=['GET', 'POST'])
 def delete():
+    if 'username' not in session:
+        return redirect('/login')
+
     if request.method == 'POST':
         # Handle POST request (scanned data from frontend)
         scanned_data = request.json.get('data')
