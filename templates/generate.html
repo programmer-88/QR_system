@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate QR Code</title>
+</head>
+<body>
+    <h1>Generate QR Code</h1>
+    <form method="POST">
+        <label for="upi_info">UPI Info:</label>
+        <input type="text" id="upi_info" name="upi_info" required><br><br>
+        <button type="submit">Generate</button>
+    </form>
+    {% if qr_code_path %}
+        <h2>Generated QR Code:</h2>
+        <img src="{{ url_for('static', filename=qr_code_path.split('static/')[1]) }}" alt="QR Code">
+    {% endif %}
+</body>
+</html>
