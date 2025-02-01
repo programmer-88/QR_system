@@ -11,3 +11,9 @@ when generating a QR code the upi, QR code,upi,date and time upon creating shoul
 
 The same should happen when deleting a user from active 
 The data should be moved to inactive with the username of user who generated the qr code, upi, date and time generated, date and time removed form active and user who removed it from active
+
+
+Create ssl certificate
+openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
+
+install opencv and pyzbar pip modules
