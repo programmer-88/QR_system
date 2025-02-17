@@ -4,13 +4,98 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR Code System</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+        .navbar {
+            margin-bottom: 20px;
+        }
+        .card {
+            margin-bottom: 20px;
+            border: none;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .card-body {
+            padding: 20px;
+        }
+        .card-title {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 10px;
+            font-size: 1.1rem;
+        }
+        /* Custom styles for the logout button */
+        .btn-logout {
+            font-size: 1.1rem; /* Larger font size */
+            padding: 10px 20px; /* Larger padding */
+            background-color: #dc3545; /* Red color */
+            border: none; /* Remove default border */
+            color: white; /* White text */
+        }
+        .btn-logout:hover {
+            background-color: #c82333; /* Darker red on hover */
+        }
+    </style>
 </head>
 <body>
-    <h1>QR Code System</h1>
-    <ul>
-        <li><a href="{{ url_for('generate') }}">Generate QR Code</a></li>
-        <li><a href="{{ url_for('verify') }}">Verify QR Code</a></li>
-        <li><a href="{{ url_for('delete') }}">Delete Record</a></li>
-    </ul>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">QR Code System</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link btn-logout" href="{{ url_for('logout') }}">Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Generate QR Code</h5>
+                        <p class="card-text">Create a new QR code with custom data.</p>
+                        <a href="{{ url_for('generate') }}" class="btn btn-primary">Generate</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Verify QR Code</h5>
+                        <p class="card-text">Verify the authenticity of a QR code.</p>
+                        <a href="{{ url_for('verify') }}" class="btn btn-primary">Verify</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Delete Record</h5>
+                        <p class="card-text">Delete a record from the database.</p>
+                        <a href="{{ url_for('delete') }}" class="btn btn-primary">Delete</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS (Optional, for interactive components) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

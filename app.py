@@ -1,11 +1,19 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, session, send_from_directory
 import sqlite3
 from datetime import datetime
+import qrcode
+import os
 
 app = Flask(__name__)
+app.secret_key = 'your_secret_key'  # Required for session management
 
 # Database setup
 DATABASE = 'qr_records.db'
+
+# Ensure the qrcodes directory exists
+QRCODE_DIR = os.path.join('static', 'qrcodes')
+if not os.path.exists(QRCODE_DIR):
+    os.makedirs(QRCODE_DIR)
 
 def init_db():
     conn = sqlite3.connect(DATABASE)
@@ -14,18 +22,84 @@ def init_db():
                  (code TEXT PRIMARY KEY, upi_info TEXT, data TEXT, creation_date TEXT)''')
     c.execute('''CREATE TABLE IF NOT EXISTS archived_records
                  (code TEXT PRIMARY KEY, upi_info TEXT, data TEXT, creation_date TEXT, deletion_date TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS users
+                 (username TEXT PRIMARY KEY, password TEXT)''')
     conn.commit()
     conn.close()
 
 # Initialize the database
 init_db()
 
+# Dummy user data for demonstration
+users = {
+    "admin": "password123",
+    "user": "user123"
+}
+
 @app.route('/')
-def index():
+def home():
+    return redirect('/login')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        # Check if username and password match
+        conn = sqlite3.connect(DATABASE)
+        c = conn.cursor()
+        c.execute("SELECT password FROM users WHERE username=?", (username,))
+        user = c.fetchone()
+        conn.close()
+
+        if user and user[0] == password:  # Compare plaintext passwords (not secure)
+            session['username'] = username  # Store username in session
+            return redirect('/dashboard')  # Redirect to dashboard after login
+        else:
+            return "Invalid username or password", 401
+
+    return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        # Check if the username already exists
+        conn = sqlite3.connect(DATABASE)
+        c = conn.cursor()
+        c.execute("SELECT username FROM users WHERE username=?", (username,))
+        if c.fetchone():
+            conn.close()
+            return "Username already exists. Please choose a different username.", 400
+
+        # Insert the new user into the database
+        c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+        conn.commit()
+        conn.close()
+
+        return redirect('/login')
+
+    return render_template('register.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('username', None)
+    return redirect('/login')
+
+@app.route('/dashboard')
+def dashboard():
+    if 'username' not in session:
+        return redirect('/login')
     return render_template('index.html')
 
 @app.route('/generate', methods=['GET', 'POST'])
 def generate():
+    if 'username' not in session:
+        return redirect('/login')
+
     if request.method == 'POST':
         upi_info = request.form['upi_info']
         
@@ -45,13 +119,34 @@ def generate():
                   (code, upi_info, data, current_time))
         conn.commit()
         conn.close()
-        
-        return render_template('generate.html', qr_code_data=data)
+
+        # Generate QR code
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(data)
+        qr.make(fit=True)
+
+        # Create an image from the QR Code instance
+        img = qr.make_image(fill_color="black", back_color="white")
+
+        # Save the QR code image to the static/qrcodes directory
+        qr_code_filename = f"{code}.png"
+        qr_code_path = os.path.join(QRCODE_DIR, qr_code_filename)
+        img.save(qr_code_path)
+
+        return render_template('generate.html', qr_code_data=data, qr_code_image=qr_code_filename)
     
     return render_template('generate.html')
 
 @app.route('/verify', methods=['GET', 'POST'])
 def verify():
+    if 'username' not in session:
+        return redirect('/login')
+
     if request.method == 'POST':
         # Handle POST request (scanned data from frontend)
         scanned_data = request.json.get('data')
@@ -73,6 +168,9 @@ def verify():
 
 @app.route('/delete', methods=['GET', 'POST'])
 def delete():
+    if 'username' not in session:
+        return redirect('/login')
+
     if request.method == 'POST':
         # Handle POST request (scanned data from frontend)
         scanned_data = request.json.get('data')
@@ -98,6 +196,11 @@ def delete():
     
     # Handle GET request (render the delete page)
     return render_template('delete.html')
+
+# Serve QR code images from the static/qrcodes directory
+@app.route('/static/qrcodes/<filename>')
+def serve_qrcode(filename):
+    return send_from_directory(QRCODE_DIR, filename)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, ssl_context=('cert.pem', 'key.pem'), debug=True)
